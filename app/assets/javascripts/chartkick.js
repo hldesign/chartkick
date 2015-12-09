@@ -561,7 +561,11 @@
         var i, j, s, d, key, rows = [];
         for (i = 0; i < series.length; i++) {
           s = series[i];
-          data.addColumn("number", s.name);
+          if (s.tooltip) {
+            data.addColumn(s.tooltip);
+          } else {
+            data.addColumn("number", s.name);
+          }
 
           for (j = 0; j < s.data.length; j++) {
             d = s.data[j];
@@ -569,7 +573,7 @@
             if (!rows[key]) {
               rows[key] = new Array(series.length);
             }
-            rows[key][i] = toFloat(d[1]);
+            rows[key][i] = d[1];
           }
         }
 
@@ -790,8 +794,20 @@
     return r;
   };
 
+  var formatTooltipData = function (data, keyType) {
+    var r = [], key, j;
+    for (j = 0; j < data.length; j++) {
+      key = toFormattedKey(data[j][0], keyType);
+      r.push([key, data[j][1]]);
+    }
+    if (keyType === "datetime") {
+      r.sort(sortByTime);
+    }
+    return r;
+  };
+
   function processSeries(series, opts, keyType) {
-    var i;
+    var i, s, formattedSeries = [];
 
     // see if one series or multiple
     if (!isArray(series) || typeof series[0] !== "object" || isArray(series[0])) {
@@ -806,10 +822,20 @@
 
     // right format
     for (i = 0; i < series.length; i++) {
-      series[i].data = formatSeriesData(toArr(series[i].data), keyType);
+      s = series[i];
+      formattedSeries.push({
+        name: s.name,
+        data: formatSeriesData(toArr(s.data), keyType)
+      });
+      // see if series has custom tooltips
+      if (s.tooltip) {
+        formattedSeries.push({
+          tooltip: s.tooltipSettings ? s.tooltipSettings : {type: 'string', role: 'tooltip'},
+          data: formatTooltipData(toArr(s.tooltip), keyType)
+        });
+      }
     }
-
-    return series;
+    return formattedSeries;
   }
 
   function processSimple(data) {
